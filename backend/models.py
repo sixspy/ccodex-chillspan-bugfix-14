@@ -55,6 +55,11 @@ class LineageIn(BaseModel):
     detail: str
 
 
+class LineageFilterIn(BaseModel):
+    batch_id: int
+    generation: int = Field(ge=1)
+
+
 class CalibrationIn(BaseModel):
     probe_id: int
     offset_c: float

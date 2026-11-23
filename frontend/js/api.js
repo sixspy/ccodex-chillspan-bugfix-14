@@ -57,6 +57,8 @@ export function createApi(getToken, onUnauthorized) {
     lineage: () => req("/api/lineage"),
     lineageBatch: (id) => req(`/api/lineage/batch/${id}`),
     addLineage: (data) => req("/api/lineage", { method: "POST", body: JSON.stringify(data) }),
+    pinLineageFilter: (data) =>
+      req("/api/lineage/filter", { method: "POST", body: JSON.stringify(data) }),
     reconcile: () => req("/api/reconcile"),
     reconcileOne: (code) => req(`/api/reconcile/${encodeURIComponent(code)}`),
     proofBatch: (code) => req(`/api/proof/batch/${encodeURIComponent(code)}`),

@@ -131,8 +131,17 @@ CREATE TABLE IF NOT EXISTS lineage_edges(
   to_batch_id INTEGER,
   edge_type TEXT NOT NULL,
   detail TEXT NOT NULL,
+  from_gen INTEGER NOT NULL DEFAULT 1,
+  to_gen INTEGER,
   created_at TEXT NOT NULL,
   FOREIGN KEY(from_batch_id) REFERENCES temp_batches(id)
+);
+CREATE TABLE IF NOT EXISTS lineage_filter_pins(
+  batch_id INTEGER PRIMARY KEY,
+  generation INTEGER NOT NULL,
+  pinned_by TEXT NOT NULL,
+  pinned_at TEXT NOT NULL,
+  FOREIGN KEY(batch_id) REFERENCES temp_batches(id)
 );
 CREATE TABLE IF NOT EXISTS calibration_records(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -378,7 +387,7 @@ def seed_routes(conn: sqlite3.Connection) -> None:
 
 def seed_lineage_samples(conn: sqlite3.Connection) -> None:
     batches = conn.execute(
-        "SELECT id, batch_code FROM temp_batches ORDER BY id LIMIT 3"
+        "SELECT id, batch_code, generation FROM temp_batches ORDER BY id LIMIT 3"
     ).fetchall()
     if len(batches) < 2:
         return
@@ -386,21 +395,47 @@ def seed_lineage_samples(conn: sqlite3.Connection) -> None:
     if n:
         return
     conn.execute(
-        """INSERT INTO lineage_edges(from_batch_id,to_batch_id,edge_type,detail,created_at)
-           VALUES (?,?,?,?,?)""",
+        """INSERT INTO lineage_edges(from_batch_id,to_batch_id,edge_type,detail,
+           from_gen,to_gen,created_at)
+           VALUES (?,?,?,?,?,?,?)""",
         (
             batches[0]["id"],
             batches[1]["id"],
             "分装衍生",
             f"{batches[0]['batch_code']} 抽样转至 {batches[1]['batch_code']}",
+            int(batches[0]["generation"]),
+            int(batches[1]["generation"]),
             now_iso(),
         ),
+    )
+
+
+def migrate_lineage_generation(conn: sqlite3.Connection) -> None:
+    """存量库补钉代列：from_gen/to_gen 以批次当前代回填（列表代滤纪要·甲路径）。"""
+    cols = {
+        r["name"] for r in conn.execute("PRAGMA table_info(lineage_edges)").fetchall()
+    }
+    if "from_gen" not in cols:
+        conn.execute(
+            "ALTER TABLE lineage_edges ADD COLUMN from_gen INTEGER NOT NULL DEFAULT 1"
+        )
+    if "to_gen" not in cols:
+        conn.execute("ALTER TABLE lineage_edges ADD COLUMN to_gen INTEGER")
+    conn.execute(
+        """UPDATE lineage_edges SET from_gen=(
+             SELECT generation FROM temp_batches WHERE id=lineage_edges.from_batch_id)"""
+    )
+    conn.execute(
+        """UPDATE lineage_edges SET to_gen=(
+             SELECT generation FROM temp_batches WHERE id=lineage_edges.to_batch_id)
+           WHERE to_batch_id IS NOT NULL"""
     )
 
 
 def init_db() -> None:
     with connect() as conn:
         conn.executescript(SCHEMA)
+        migrate_lineage_generation(conn)
         seed_users(conn)
         seed_chambers(conn)
         seed_probes(conn)

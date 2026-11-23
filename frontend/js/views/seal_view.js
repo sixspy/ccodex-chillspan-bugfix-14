@@ -4,7 +4,7 @@ export const sealViewTemplate = `
   <p class="hint">校准有效且无开放游标时方可封批。</p>
   <div class="form-row">
     <div><label>批次</label>
-      <select v-model.number="sealForm.batch_id"><option v-for="b in sealableBatches" :key="b.id" :value="b.id">{{ b.batch_code }}</option></select>
+      <select v-model.number="sealForm.batch_id"><option v-for="b in sealableBatches" :key="b.id" :value="b.id">{{ b.batch_code }} · 当前代G{{ b.generation }}（封后G{{ b.generation + 1 }}）</option></select>
     </div>
     <div><label>快照附言</label><input v-model="sealForm.manifest"/></div>
   </div>

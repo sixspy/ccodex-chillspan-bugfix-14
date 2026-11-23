@@ -90,6 +90,7 @@ createApp({
       edge_type: "分装衍生",
       detail: "冷库内分装",
     });
+    const lineageFilterForm = ref({ batch_id: 1, generation: 1 });
     const calForm = ref({
       probe_id: 1,
       offset_c: 0.1,
@@ -372,6 +373,17 @@ createApp({
       }
     }
 
+    async function pinLineageFilter() {
+      clearFlash();
+      try {
+        const row = await api.pinLineageFilter(lineageFilterForm.value);
+        flashOk(`批次 #${row.batch_id} 代滤已钉 G${row.generation}`);
+        await refresh();
+      } catch (e) {
+        flashErr(e);
+      }
+    }
+
     async function loadRecon() {
       clearFlash();
       try {
@@ -486,6 +498,7 @@ createApp({
       sealForm,
       spectrumForm,
       lineageForm,
+      lineageFilterForm,
       calForm,
       routeForm,
       carrierForm,
@@ -516,6 +529,7 @@ createApp({
       doSeal,
       doSpectrum,
       addLineageEdge,
+      pinLineageFilter,
       loadRecon,
       loadProof,
       loadReconAll,
